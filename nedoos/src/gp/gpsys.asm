@@ -15,53 +15,21 @@
 	call detectmoonsound
 	call detecttfm
 	call detectopm
-	call detectopna
-	call loadplayers
-	jp nz,printerrorandexit
-        ret
+	jp detectopna
+
 
 loadsettings
 	ld de,settingsfilename
 	call openstream_file
 	or a
+        ret nz
 	ld de,browserpanel
-	jp z,.iniFound
-
-        ld hl,defaultGpIni
-        ld bc,defaultGpIniEnd-defaultGpIni
-        ldir
-                
-        LD DE,settingsfilename
-        OS_CREATEHANDLE
-        OR A
-        jp NZ,.settingscreateerror
-        ld a,b
-        ld (filehandle),a
-
-        ld hl,defaultGpIniEnd-defaultGpIni ;size
-        ld de,defaultGpIni ;addr
-;savestream_file
-;de=buf
-;hl=size
-        ld a,(filehandle)
-        ld b,a
-        OS_WRITEHANDLE         ;hl=actual size
-
-        or a
-        jp nz,.settingswriteerror
-	call closestream_file
-        ld hl,settingswritemessage
-        call print_hl
-        jr .parseSettings
-
-.iniFound
 	ld hl,0x4000
 	call readstream_file
 	ld de,browserpanel
 	add hl,de
 	ld (hl),0
 	call closestream_file
-.parseSettings
 	ld de,browserpanel
 .parseloop
 	ld bc,'='*256
@@ -95,15 +63,6 @@ loadsettings
 	or a
 	jr nz,.parseloop
 	ret
-.settingscreateerror
-        ld hl,settingscreateerror
-        jr .swc
-.settingswriteerror
-        ld hl,settingswriteerror
-.swc
-        call print_hl
-        jp .parseSettings
-
 
 findnextchar
 ;de = ptr
@@ -342,7 +301,7 @@ detectopna
 	in a,(c)
 	cp 2
 	ld hl,notfoundstr
-;	jp nz,print_hl
+;	jp nz,print_hl 
 	ld a,1
 	ld (gpsettings.opnastatus),a
 	ld de,0x3027
@@ -432,132 +391,3 @@ istfmpresent
 	call trywritingtfm1
 	xor a
 	ret
-
-;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-plr_vgm         db "gp/vgm.plr",0
-plr_mp3         db "gp/mp3.plr",0
-plr_pt3         db "gp/pt3.plr",0
-plr_mwm         db "gp/mwm.plr",0
-plr_mm          db "gp/moonmod.plr",0
-plr_oplmid      db "gp/opl4mid.plr",0
-
-
-playerslist:
-        dw plr_mm,      gpsettings.usemoonmod
-        dw plr_mwm,     gpsettings.usemwm
-        dw plr_mp3,     gpsettings.usemp3
-        dw plr_pt3,     gpsettings.usept3
-        dw plr_vgm,     gpsettings.usevgm
-        dw 0
-;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-loadplayers:
-
-	xor a
-	ld (playercount),a
-        ld hl,playerslist
-.loop1
-        ld c,(hl) : inc hl
-        ld b,(hl) : inc hl  ;bc = player name
-        ld a,b
-        or c
-        jr z,.breakLoop1
-        ld e,(hl) : inc hl
-        ld d,(hl) : inc hl ;de- player variable
-        push hl
-
-        ex de,hl
-        ld e,(hl)
-        inc hl
-        ld d,(hl)
-        call loadplayer
-        pop hl                
-        jr .loop1
-.breakLoop1
-	ld a,(playercount)
-	dec a
-	ld hl,noplayersloadedstr
-	ret m
-	xor a
-	ret
-
-loadplayer:
-        ;bc - filename
-        ;de - settings variable addr
-        ld (.filename),bc      
-
-        ld a,d
-        or e
-	ld a,'1' ;default for Use<Player> variable is 1
-	jr z,$+3
-	ld a,(de)
-	cp '0'
-	jp z,.skipplr
-
-	OS_NEWPAGE
-	or a
-	ret nz
-	ld a,e
-	ld (.playerpage),a
-        SETPG4000
-
-.filename=$+1
-        ld de,0
-        call openstream_file
-        or a
-        jp nz,.noplrfound
-	ld de,0x4000
-	ld hl,0
-	call readstream_file
-        call closestream_file
-
-
-	ld hl,initializing1str
-	call print_hl
-	ld hl,(PLAYERNAMESTRADDR)
-	call print_hl
-	ld hl,initializing2str
-	call print_hl
-	ld hl,gpsettings
-	ld ix,gpsettings
-	ld a,(.playerpage)
-	call playerinit
-	push af
-	call print_hl
-	pop af
-	jr nz,.cleanup
-	ld hl,playercount
-	ld e,(hl)
-	inc (hl)
-	ld d,0
-	ld hl,playerpages
-	add hl,de
-.playerpage=$+1
-	ld (hl),0
-	ret
-.cleanup
-	ld a,(.playerpage)
-	ld e,a
-	OS_DELPAGE
-	ret
-
-.noplrfound:
-        ld hl,failedtoloadstr
-        call print_hl
-        ld hl,(.filename)
-        call print_hl
-        ld hl,crstr
-        jp print_hl        
-
-.skipplr:
-        ld hl,filestr
-        call print_hl
-        ld hl,(.filename)
-        call print_hl
-        ld hl,isdisabledstr
-        call print_hl
-        ld hl,crstr
-        jp print_hl  
-
-defaultGpIni:
-        incbin "gp.ini"
-defaultGpIniEnd:

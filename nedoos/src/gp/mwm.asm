@@ -276,4 +276,4 @@ moduleerrorstr
 	db "Failed to load the module!",0
 end
 
-	savebin "gp/mwm.plr",begin,end-begin
+	savebin "mwm.bin",begin,end-begin
