@@ -91,20 +91,20 @@ cmd db CUSTOM_UI_CMD_COUNT
 
 	struct CUSTOMUIDRAWWINDOW
 cmd db CUSTOM_UI_CMD_DRAW_WINDOW
-topleftx db 1
-toplefty db 1
-clientwidth db 1
-clientheight db 1
+topleftx db 0
+toplefty db 0
+clientwidth db 0
+clientheight db 0
 	ends
 
 	struct CUSTOMUIPRINTTEXT
 cmd db CUSTOM_UI_CMD_PRINT_TEXT
-posx db 1
-posy db 1
+posx db 0
+posy db 0
 straddr dw 0
 	ends
 
 	struct CUSTOMUISETCOLOR
 cmd db CUSTOM_UI_CMD_SET_COLOR
-color db 1
+color db 0
 	ends

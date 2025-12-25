@@ -119,7 +119,7 @@ modoptioncount=($-modoptions)/6
 bomgemoonoption
 	dw bomgemoonoptionstr : dw bomgemoonhandler : dw bomgemoonoptiondescstr
 slowtfmoption
-	dw slowtfmstr : dw slowtfmhandler : dw slowtfmoptiondescstr
+	dw slowtfmoptionstr : dw slowtfmhandler : dw slowtfmoptiondescstr
 playersetupoptioncount=($-playersetupoptions)/6
 
 MIDI_DEVICE_WINDOW_X = 4
@@ -154,7 +154,7 @@ modoption1str db MOD_DEVICE_WINDOW_Y+1,MOD_DEVICE_WINDOW_X+1,"[X] Auto Select De
 modoption2str db MOD_DEVICE_WINDOW_Y+2,MOD_DEVICE_WINDOW_X+1,"[ ] MoonSound (OPL4)    ",0
 modoption3str db MOD_DEVICE_WINDOW_Y+3,MOD_DEVICE_WINDOW_X+1,"[ ] GeneralSound        ",0
 bomgemoonoptionstr db MISC_OPTION_WINDOW_Y+1,MISC_OPTION_WINDOW_X+1,"[ ] OPL3-only Device (BomgeMoon)  ",0
-slowtfmstr db MISC_OPTION_WINDOW_Y+2,MISC_OPTION_WINDOW_X+1,"[ ] Slow TurboSound-FM            ",0
+slowtfmoptionstr   db MISC_OPTION_WINDOW_Y+2,MISC_OPTION_WINDOW_X+1,"[ ] Slow TurboSound-FM            ",0
 
 settingsheaderstr db "Player Settings",0
 setuphotkeysstr db "ESC=Save&Continue  Space=Toggle  Up/Down=Nagivate",0
@@ -879,7 +879,7 @@ foundstr
 bomgemoonstr
 	db "OPL3\r\n",0
 founddualchipstr
-	db "2x\r\n",0
+	db "dual!\r\n",0
 detectingcpustr
 	db "Running on...",0
 cpufpgastr

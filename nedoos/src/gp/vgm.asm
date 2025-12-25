@@ -260,6 +260,7 @@ inithardware
 	ld (checkvgmchip.strend),hl
 	ld a,VGM_CHIP_STR_MAX_LEN
 	ld (checkvgmchip.strcharleft),a
+;init AY
 	check_vgm_chip HEADER_CLOCK_AY8910,ay8910str
 	call nz,initAY8910
 ;init OPM
@@ -270,6 +271,8 @@ inithardware
 	ld c,0
 	check_vgm_chip HEADER_CLOCK_YM2203,ym2203str
 	check_vgm_chip HEADER_CLOCK_YM2608,ym2608str
+	check_vgm_chip HEADER_CLOCK_SN76489,sn76489str
+	check_vgm_chip HEADER_CLOCK_YM2612,ym2612str
 	inc c
 	dec c
 .opninitfunc=$+1
@@ -583,6 +586,7 @@ cmdYM2203dp_tfm
 	memory_stream_read_2 e,d
 	jp opnwritemusiconlyfm2
 
+cmdYM2612p0_tfm
 cmdYM2608p0_tfm
 	memory_stream_read_2 e,d
 	ld a,e
@@ -612,6 +616,7 @@ cmdYM2608p0_tfm
 	db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 	db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 
+cmdYM2612p1_tfm
 cmdYM2608p1_tfm
 	memory_stream_read_2 e,d
 	ld a,e
@@ -864,10 +869,10 @@ cmdtable
 	db skip3           %256 ; 4D
 	db skip3           %256 ; 4E
 	db skip2           %256 ; 4F
-	db cmdunsupported  %256 ; 50
+	db cmdSN76489      %256 ; 50
 	db cmdunsupported  %256 ; 51
-	db cmdunsupported  %256 ; 52
-	db cmdunsupported  %256 ; 53
+	db cmdYM2612p0_tfm %256 ; 52
+	db cmdYM2612p1_tfm %256 ; 53
 	db cmdYM2151       %256 ; 54
 	db cmdYM2203_tfm   %256 ; 55
 	db cmdYM2608p0_tfm %256 ; 56
@@ -1120,10 +1125,10 @@ cmdtable
 	db skip3           /256 ; 4D
 	db skip3           /256 ; 4E
 	db skip2           /256 ; 4F
-	db cmdunsupported  /256 ; 50
+	db cmdSN76489      /256 ; 50
 	db cmdunsupported  /256 ; 51
-	db cmdunsupported  /256 ; 52
-	db cmdunsupported  /256 ; 53
+	db cmdYM2612p0_tfm /256 ; 52
+	db cmdYM2612p1_tfm /256 ; 53
 	db cmdYM2151       /256 ; 54
 	db cmdYM2203_tfm   /256 ; 55
 	db cmdYM2608p0_tfm /256 ; 56
@@ -1585,6 +1590,8 @@ enableopna
 	ld (inithardware.opninitfunc),hl
 	ld hl,opnaloaddatablock
 	ld (opnadatablockhandler),hl
+	set_cmd_handler 0x52,cmdYM2612p0_opna
+	set_cmd_handler 0x53,cmdYM2612p1_opna
 	set_cmd_handler 0x55,cmdYM2203_opna
 	set_cmd_handler 0x56,cmdYM2608p0_opna
 	set_cmd_handler 0x57,cmdYM2608p1_opna
@@ -1606,32 +1613,35 @@ cmdYM2203dp_opna
 	set 2,d
 	jp opnawritefm1
 
+cmdYM2612p0_opna
 cmdYM2608p0_opna
 	memory_stream_read_2 e,d
 	jp opnawritemusiconlyfm1
 
+cmdYM2612p1_opna
 cmdYM2608p1_opna
 	memory_stream_read_2 e,d
 	jp opnawritemusiconlyfm2
+
+cmdSN76489
+	memory_stream_read_1 a
+	ret
 
 hltodecimalstring
 ;hl = number
 ;de = string buffer
 	ld ixl,e
-	inc ixl
 	ld bc,-10000
+	inc ixl
 	call .writedigit
-	call z,.removeleadingzero
 	ld bc,-1000
 	call .writedigit
-	call z,.removeleadingzero
 	ld bc,-100
 	call .writedigit
-	call z,.removeleadingzero
 	ld bc,-10
 	call .writedigit
-	call z,.removeleadingzero
 	ld bc,-1
+	dec ixl ;ensure the last zero is printed
 	call .writedigit
 	xor a
 	ld (de),a
@@ -1645,8 +1655,8 @@ hltodecimalstring
 	ld (de),a
 	inc de
 	cp '0'
-	ret
-.removeleadingzero
+	ret nz
+;remove leading zeroes
 	ld a,e
 	cp ixl
 	ret nz
@@ -1684,7 +1694,7 @@ VGM_INFO_WINDOW_Y = 17
 
 vgminfoui
 	CUSTOMUISETCOLOR ,COLOR_PANEL
-        CUSTOMUIDRAWWINDOW ,VGM_INFO_WINDOW_X,VGM_INFO_WINDOW_Y,23,3
+	CUSTOMUIDRAWWINDOW ,VGM_INFO_WINDOW_X,VGM_INFO_WINDOW_Y,23,3
 	CUSTOMUISETCOLOR ,COLOR_CURSOR
 	CUSTOMUIPRINTTEXT ,VGM_INFO_WINDOW_X+2,VGM_INFO_WINDOW_Y,vgminfostr
 	CUSTOMUISETCOLOR ,COLOR_PANEL_FILE
@@ -1699,9 +1709,11 @@ vgmchipsstr ds VGM_CHIP_STR_MAX_LEN+1
 chipseparatorstr db "+",0
 dualchipstr db "Dual-",0
 ay8910str db "AY8910",0
+sn76489str db "SN76489",0
 ym2151str db "YM2151",0
 ym2203str db "YM2203",0
 ym2608str db "YM2608",0
+ym2612str db "YM2612",0
 y8950str db "MSX-AUDIO",0
 ym3526str db "YM3526",0
 ym3812str db "YM3812",0
@@ -1736,11 +1748,13 @@ waveheaderbufferend = waveheaderbuffer+WAVEHEADERBUFFERSIZE
 titlestr = waveheaderbufferend
 titlestrend = titlestr+TITLELENGTH
 
-HEADER_LOOP_SAMPLES_COUNT = vgmheadercopy+0x20
+HEADER_CLOCK_SN76489 = vgmheadercopy+0x0c
 HEADER_GD3_OFFSET    = vgmheadercopy+0x14
 HEADER_SAMPLES_COUNT = vgmheadercopy+0x18
 HEADER_LOOP_OFFSET   = vgmheadercopy+0x1c
-HEADER_RECORDING_RATE = vgmheadercopy+0x24
+HEADER_LOOP_SAMPLES_COUNT = vgmheadercopy+0x20
+HEADER_RECORDING_RATE= vgmheadercopy+0x24
+HEADER_CLOCK_YM2612  = vgmheadercopy+0x2c
 HEADER_CLOCK_YM2151  = vgmheadercopy+0x30
 HEADER_CLOCK_YM2203  = vgmheadercopy+0x44
 HEADER_CLOCK_YM2608  = vgmheadercopy+0x48
