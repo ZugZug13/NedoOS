@@ -11,7 +11,7 @@ FILE_NAME_OFFSET = FILE_DISPLAY_INFO_OFFSET+FILE_DISPLAY_INFO_SIZE
 FILE_NAME_SIZE = SFN_SIZE
 FILE_ATTRIB_OFFSET = FILE_NAME_OFFSET+FILE_NAME_SIZE
 FILE_ATTRIB_SIZE = 1
-BROWSER_FILE_COUNT = 167
+BROWSER_FILE_COUNT = 162
 PLAYLIST_FILE_COUNT = 40
 FILE_LINE_COUNT = 22
 FILES_WINDOW_X = 0
@@ -99,10 +99,16 @@ drawprogressincremental
 	ret
 
 drawprogresscallback
+;out: zf=0 if ESC was pressed, zf=1 otherwise
+.func=$+1
+	call drawprogress
 	ld hl,drawprogressincremental
-	ld a,0xc3 ;'jp nn' op
-	ld (drawprogresscallback),a
-	jp drawprogress
+	ld (.func),hl
+	OS_GETKEY
+	sub key_esc
+	cp 1
+	sbc a,a
+	ret
 
 startplayer
 	ld hl,startupcode
@@ -123,8 +129,6 @@ startplayer
 	call setcurrentpanel
 	ld de,defaultplaylistfilename
 	call loadplaylist
-	xor a
-	ld (playlistchanged),a
 	ld hl,mainmsgtable
 	ld (currentmsgtable),hl
 	call processcommandline
@@ -202,7 +206,7 @@ mainmsghandlers_start
 	db key_up        : dw goprevfile
 	db key_down      : dw gonextfile
 	db key_enter     : dw startplaying
-	db key_esc       : dw exitplayer
+	db key_esc       : dw confirmplayerexit
 	db ' '	         : dw addtoplaylist
 	db key_tab       : dw switchpanels
 	db key_backspace : dw clearplaylist
@@ -233,6 +237,8 @@ mainidle
 	ld a,(COMMANDLINE+2)
 	or a
 	ret z
+gotcommandline
+	call turnturboon
 	or 255 ;set zf=0
 	call setcurrentpanel
 	jp processcommandline
@@ -252,9 +258,7 @@ playnokeypressed
 	or a
 	ret z
 	call stopplaying
-	or 255 ;set zf=0
-	call setcurrentpanel
-	jp processcommandline
+	jr gotcommandline
 
 gotop	ld ix,(currentpaneladdr)
 	xor a
@@ -389,12 +393,58 @@ removefromplaylist
 	jp drawplaylistwindow
 
 exitplayer
-	pop hl
-	call stopplaying
-	OS_SETSYSDRV
 	call unloadplayers
-	call savedefaultplaylist
 	QUIT
+
+confirmplayerexit
+	OS_SETSYSDRV
+	call savedefaultplaylist
+	call changetocurrentfolder
+	ld hl,confirmexitmsgtable
+	ld (currentmsgtable),hl
+	ld hl,confirmexitui
+	ld (drawdialog.uiaddr),hl
+	jp drawdialog
+
+cancelplayerexit
+	ld hl,mainmsgtable
+	ld (currentmsgtable),hl
+	ld hl,0
+	ld (drawdialog.uiaddr),hl
+	jp drawui
+
+confirmexitmsgtable
+	db (confirmexitmsghandlers_end-confirmexitmsghandlers_start)/3
+confirmexitmsghandlers_start
+	db 0             : dw mainidle
+	db key_redraw    : dw redraw
+	db 'y'	         : dw exitplayer
+	db 'n'	         : dw cancelplayerexit
+	db key_esc       : dw cancelplayerexit
+confirmexitmsghandlers_end
+
+CONFIRM_EXIT_WINDOW_X = 17
+CONFIRM_EXIT_WINDOW_Y = 8
+
+confirmexittext1str db "Нажмите RSHIFT+ENTER, чтобы свернуть плеер",0
+confirmexittext2str db "и вернуться к нему без долгого перезапуска.",0
+confirmexittext3str db "Exit the player instead? (Y/N)",0
+
+confirmexitui
+	CUSTOMUISETCOLOR ,40
+	CUSTOMUIDRAWWINDOW ,CONFIRM_EXIT_WINDOW_X,CONFIRM_EXIT_WINDOW_Y,45,6
+	CUSTOMUIPRINTTEXT ,CONFIRM_EXIT_WINDOW_X+2,CONFIRM_EXIT_WINDOW_Y+2,confirmexittext1str
+	CUSTOMUIPRINTTEXT ,CONFIRM_EXIT_WINDOW_X+2,CONFIRM_EXIT_WINDOW_Y+3,confirmexittext2str
+	CUSTOMUIPRINTTEXT ,CONFIRM_EXIT_WINDOW_X+8,CONFIRM_EXIT_WINDOW_Y+5,confirmexittext3str
+	CUSTOMUIDRAWEND
+
+drawdialog
+.uiaddr=$+2
+	ld ix,0
+	ld a,ixh
+	or ixl
+	ret z
+	jp drawcustomui
 
 unloadplayers
 	ld hl,playerpages
@@ -417,9 +467,12 @@ playerdeinitloop
 	ret
 
 savedefaultplaylist
-	ld a,(playlistchanged)
+playlistchanged=$+1
+	ld a,0
 	or a
 	ret z
+	xor a
+	ld (playlistchanged),a
 	ld de,defaultplaylistfilename
 saveplaylist
 ;de = filename
@@ -500,15 +553,15 @@ startplaying
 	ld hl,0
 	ld (devicemask),hl
 	ld (ERRORSTRINGADDR),hl
-	call drawplayercustomui
+	call drawplayer
+	ld hl,drawprogress
+	ld (drawprogresscallback.func),hl
 .filext1=$+1
 	ld bc,0
 .filext2=$+1
 	ld de,0
 .filename=$+1
 	ld hl,0
-	ld ix,drawprogresscallback
-	ld (ix),0x21 ;'ld hl,nn' op
 	call musicload
 	jp nz,drawerrorwindow
 	ld (devicemask),hl
@@ -522,12 +575,12 @@ startplaying
 	ld (hl),0
 	inc hl
 	djnz $-3
-;disable drawplayerwindow and draw the rest of player UI
+;skip drawplayerwindow and redraw the rest of player UI
 	ld a,1
 	ld (isplaying),a
-	ld a,0xc9
+	ld a,0xc9 ;ret opcode
 	ld (drawplayerwindow),a
-	call drawplayercustomui
+	call drawplayer
 	xor a
 	ld (drawplayerwindow),a
 	ret
@@ -802,6 +855,8 @@ drawerrorwindow
 	ld a,l
 	or h
 	jp z,drawui; got no text to print!
+	bit 7,h
+	jr nz,errorcustomui
 	ld b,1
 .strlenloop
 	ld a,(hl)
@@ -820,6 +875,13 @@ drawerrorwindow
 	OS_SETXY
 	ld hl,(ERRORSTRINGADDR)
 	call print_hl
+	YIELDGETKEYLOOP
+	jp drawui
+errorcustomui
+	res 7,h
+	push hl
+	pop ix
+	call drawcustomui
 	YIELDGETKEYLOOP
 	jp drawui
 
@@ -1222,6 +1284,7 @@ redraw	ld e,7
 	OS_CLS
 drawui	call drawbrowserwindow
 	call drawplaylistwindow
+	call drawdialog
 	ld de,COLOR_DEFAULT
 	OS_SETCOLOR
 	ld de,24*256+1
@@ -1231,10 +1294,13 @@ drawui	call drawbrowserwindow
 	ld a,(isplaying)
 	or a
 	ret z
-	jp drawplayercustomui
+	jp drawplayer
 
-drawplayercustomui
+drawplayer
 	ld ix,(CUSTOMUIADDR)
+	ld a,ixh
+	or ixl
+	ret z
 drawcustomui
 ;ix = commands
 .drawloop
@@ -1536,7 +1602,6 @@ loadplayer
 	call print_hl
 	ld hl,initializing2str
 	call print_hl
-	ld hl,gpsettings
 	ld ix,gpsettings
 	ld a,(.playerpage)
 	call playerinit
@@ -1595,7 +1660,7 @@ loadplayers
 	xor a
 	ret
 
-gpsettings GPSETTINGS
+gpsettings GPSETTINGS drawprogresscallback,drawcustomui
 bomgemoonsettings dw 0
 runplayersetup db 0
 
@@ -1857,11 +1922,7 @@ runoptions
 	ld de,mainfilename
 	OS_OPENHANDLE
 	or a
-	jr z,.foundmainfile
-	ld de,currentfolder
-	OS_CHDIR
-	ret
-.foundmainfile
+	jp nz,changetocurrentfolder
 	push bc
 	push bc
 	call unloadplayers
@@ -1925,7 +1986,6 @@ playlistdatasize=$-playlistdatastart
 
 musicprogress ds 1
 playercount ds 1
-playlistchanged ds 1
 playtimestr ds 6
 currentplaytimestr ds 6
 
