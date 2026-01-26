@@ -1942,7 +1942,7 @@ runoptions
 	ld sp,STACK_ADDR
 	jp startplayer
 	ent
-runoptionsodesize=$-1
+runoptionsodesize=$-runoptionsode
 
 tempmemorystart = $
 startupcode
