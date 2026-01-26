@@ -1,0 +1,45 @@
+name: Build nedoos/release zip (on master push)
+
+on:
+  push:
+    branches: [ "master" ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Zip nedoos/release (folder contents only)
+        run: |
+          set -euxo pipefail
+          FOLDER="nedoos/release"
+          OUT="nedoos-release.zip"
+
+          cd "$FOLDER"
+          zip -r "../../$OUT" .
+          cd -
+
+      - name: Update fixed tag
+        run: |
+          set -euxo pipefail
+          TAG="nedoos-release-latest"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f "$TAG" "$GITHUB_SHA"
+          git push -f origin "$TAG"
+
+      - name: Create/Update release and upload asset
+        uses: ncipollo/release-action@v1
+        with:
+          tag: nedoos-release-latest
+          name: "NedoOS release (auto, master)"
+          body: "Auto-built from master. Commit: ${{ github.sha }}"
+          artifacts: "nedoos-release.zip"
+          allowUpdates: true
+          replacesArtifacts: true
