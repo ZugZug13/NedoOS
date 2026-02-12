@@ -191,12 +191,8 @@ opl4loadromdatablock
 	ld ix,waveheaderbuffer
 	jp opl4writememory
 
-opl4settimer
+settimerstep
 ;a = rate in hz
-;output: zf=1 if timer is set, zf=0 otherwise
-	cp 13
-	ret c
-	push af
 	ld de,0
 	ld l,a
 	ld h,d
@@ -205,6 +201,15 @@ opl4settimer
 	ld hl,44100
 	call uintdiv32
 	ld (waittimerstep),hl
+	ret
+
+opl4settimer
+;a = rate in hz
+;output: zf=1 if timer is set, zf=0 otherwise
+	cp 13
+	ret c
+	push af
+	call settimerstep
 	ld hl,opl4waittimer
 	ld (waittimercallback),hl
 	pop bc

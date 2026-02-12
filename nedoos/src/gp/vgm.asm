@@ -1700,6 +1700,10 @@ enableopna
 	ld (inithardware.opninitfunc),hl
 	ld hl,opnaloaddatablock
 	ld (opnadatablockhandler),hl
+	ld hl,opnasettimer
+	ld (settimerproc),hl
+	ld hl,opnastoptimers
+	ld (stoptimerproc),hl
 	set_cmd_handler 0x52,cmdYM2612p0_opna
 	set_cmd_handler 0x53,cmdYM2612p1_opna
 	set_cmd_handler 0x55,cmdYM2203_opna
