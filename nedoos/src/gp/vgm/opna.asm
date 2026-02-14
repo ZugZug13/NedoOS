@@ -157,10 +157,6 @@ opnaloaddatablock
 	call opnawritefm2
 	ld de,0x0001
 	call opnawritefm2
-;	ld de,0x1310
-;	call opnawritefm2
-;	ld de,0x8010
-;	call opnawritefm2
 	pop hl
 	ld d,l : ld e,0x02
 	call opnawritefm2
@@ -198,8 +194,6 @@ opnaloaddatablock
 	jr nz,.uploadloop
 	exx
 	ld (memorystreamcurrentaddr),hl
-;	ld de,0x8010
-;	call opnawritefm2
 	ld de,0x0100
 	call opnawritefm2
 	jp turnturboon

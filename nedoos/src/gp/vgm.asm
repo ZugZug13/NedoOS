@@ -53,7 +53,7 @@ playerinit
 	ld a,(ix+GPSETTINGS.tfmstatus)
 	ld (tfmstatus),a
 	cp 1
-	call z,disableslowtfm
+	call z,enablenormaltfm
 	ld a,(ix+GPSETTINGS.opmstatus)
 	ld (opmstatus),a
 	ld a,(ix+GPSETTINGS.opnastatus)
@@ -66,9 +66,13 @@ playerinit
 	xor a
 	ret
 
-disableslowtfm
+enablenormaltfm
 	ld a,0x21 ;'ld hl,nn' op
 	ld (vgmopninit.callturnturbooff),a
+	ld hl,opnsettimer
+	ld (settimerproc),hl
+	ld hl,opnstoptimers
+	ld (stoptimerproc),hl
 	ret
 
 usemoonsoundtimer
