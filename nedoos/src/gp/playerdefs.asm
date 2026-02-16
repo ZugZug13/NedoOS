@@ -24,6 +24,8 @@ PLAYERNAMESTRADDR       = PLAYERSTART+0x12
 ERRORSTRINGADDR         = PLAYERSTART+0x14
 CUSTOMUIADDR            = PLAYERSTART+0x16
 
+VSYNC_FREQ = 49 ;Vsync interrupt rate in Hz
+
 	struct GPSETTINGS
 drawprogresscallback dw 0
 drawcustomui dw 0

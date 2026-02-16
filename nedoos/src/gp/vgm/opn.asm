@@ -56,13 +56,13 @@ opnsettimer
 	ld l,a
 	sbc a,h
 	sub l
-	ld h,a
-	ld a,l
-	srl h : rra
-	srl h : rra
-	ld d,a
+	ld d,l
+;high 8 bits
+	rrca : rr d
+	rrca : rr d
 	ld e,0x24
 	call opnwritefm1
+;low 2 bits
 	ld d,l
 	inc e
 	call opnwritefm1

@@ -225,13 +225,13 @@ opnasettimer
 	ld l,a
 	sbc a,h
 	sub l
-	ld h,a
-	ld a,l
-	srl h : rra
-	srl h : rra
-	ld d,a
+;high 8 bits
+	ld d,l
+	rrca : rr d
+	rrca : rr d
 	ld e,0x24
 	call opnawritefm1
+;low 2 bits
 	ld d,l
 	inc e
 	call opnawritefm1
